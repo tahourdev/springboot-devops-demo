@@ -1,0 +1,55 @@
+services:
+  demo-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: demo-api
+    depends_on:
+      - db
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db_1:5432/demo-db-compose
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 123
+    networks:
+      - demo_networks
+
+  db:
+    container_name: postgres_db_1
+    image: postgres
+    restart: always
+    ports:
+      - "5533:5432"
+    shm_size: 128mb
+    volumes:
+      - postgres_data1:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=demo-db-compose
+    networks:
+      - demo_networks
+
+  storage:
+    image: minio/minio:latest
+    container_name: minio_compose_demo
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: "@Password123!"
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
+    volumes:
+      - storage:/data
+    networks:
+      - demo_networks
+
+volumes:
+  storage:
+  postgres_data1:
+
+networks:
+  demo_networks:
+    driver: bridge
