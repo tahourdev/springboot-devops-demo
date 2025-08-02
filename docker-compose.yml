@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   demo-api:
     build:
@@ -5,31 +6,66 @@ services:
       dockerfile: Dockerfile
     container_name: demo-api
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8081:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db_1:5432/demo-db-compose
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
       - demo_networks
 
   db:
     container_name: postgres_db_1
-    image: postgres
+    image: postgres:latest
     restart: always
     ports:
-      - "5533:5432"
+      - "5433:5432"
     shm_size: 128mb
     volumes:
-      - postgres_data1:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_PASSWORD=123
       - POSTGRES_USER=postgres
       - POSTGRES_DB=demo-db-compose
     networks:
       - demo_networks
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db-keycloak:
+    container_name: db-keycloak
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5434:5432"
+    shm_size: 128mb
+    volumes:
+      - postgres_data-keycloak:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=auth
+    networks:
+      - demo_networks
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   storage:
     image: minio/minio:latest
@@ -39,16 +75,73 @@ services:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: "@Password123!"
     ports:
-      - "9000:9000"  # API port
-      - "9001:9001"  # Console port
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - storage:/data
+    networks:
+      - demo_networks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: sun
+      RABBITMQ_DEFAULT_PASS: sun
+    networks:
+      - demo_networks
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  demo-keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: demo-keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak:5432/auth
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: 123
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "true"
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      KC_LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 2s
+      retries: 15
+      start_period: 40s
+    command: ["start-dev", "--http-port", "8080", "--https-port", "8443"]
+    depends_on:
+      db-keycloak:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+      - "8443:8443"
     networks:
       - demo_networks
 
 volumes:
   storage:
-  postgres_data1:
+  postgres_data:
+  postgres_data-keycloak:
 
 networks:
   demo_networks:
