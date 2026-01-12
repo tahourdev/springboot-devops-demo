@@ -2,7 +2,8 @@ FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-# កែត្រង់នេះ៖ បន្ថែមសញ្ញា / នៅខាងចុង ឬប្រើ ./app.jar
-COPY build/libs/*.jar ./demo.jar
+# កែឱ្យដូចបន្ទាត់ខាងក្រោមនេះបេះបិទ
+COPY build/libs/ ./
 
-CMD ["java", "-jar", "demo.jar"]
+# បញ្ជាឱ្យ Run រាល់ jar ណាដែលវាឃើញក្នុង Folder /app
+ENTRYPOINT ["sh", "-c", "java -jar /app/*.jar"]
