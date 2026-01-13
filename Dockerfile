@@ -2,8 +2,8 @@ FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-# កែឱ្យដូចបន្ទាត់ខាងក្រោមនេះបេះបិទ
-COPY build/libs/ ./
+# ចម្លងយកតែ file ឈ្មោះ demo-api.jar ដែលយើងបានកំណត់ក្នុង gradle
+COPY build/libs/demo-api.jar ./demo-api.jar
 
-# បញ្ជាឱ្យ Run រាល់ jar ណាដែលវាឃើញក្នុង Folder /app
-ENTRYPOINT ["sh", "-c", "java -jar /app/*.jar"]
+# បញ្ជាឱ្យ Run ចំឈ្មោះ file តែម្ដង
+CMD ["java", "-jar", "demo-api.jar"]
