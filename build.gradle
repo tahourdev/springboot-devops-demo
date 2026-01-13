@@ -37,3 +37,13 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+// បិទការបង្កើត Plain JAR ដើម្បីកុំឱ្យច្រឡំពេល Build Docker Image
+jar {
+    enabled = false
+}
+
+// កំណត់ឱ្យវាបង្កើតតែ Boot JAR មួយគត់ដែលគ្មានពាក្យ SNAPSHOT ឬ Classifier វែងៗ (ងាយស្រួលហៅក្នុង Docker)
+bootJar {
+    archiveClassifier = ''
+    archiveFileName = 'demo-api.jar'
+}
